@@ -1,0 +1,91 @@
+body {
+  font-family: 'Dancing Script', cursive;
+  background: linear-gradient(to right, #ffecd2, #fcb69f);
+  text-align: center;
+  padding: 50px;
+}
+
+h1 {
+  font-size: 2.5em;
+  color: #d6336c;
+  margin-bottom: 40px;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+#memoryImage {
+  width: 800px;
+  height: 1000px;
+  border-radius: 15px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  transition: all 0.5s ease-in-out;
+}
+
+#prevBtn, #nextBtn {
+  font-size: 2em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #d6336c;
+  transition: transform 0.2s;
+}
+
+#prevBtn:hover, #nextBtn:hover {
+  transform: scale(1.2);
+}
+
+
+#falling-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.falling {
+  position: absolute;
+  will-change: transform, opacity;
+  top: -50px;
+  animation-name: fall;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  font-size: 24px;
+  opacity: 0.7;
+}
+
+@keyframes fall {
+  to {
+    transform: translateY(110vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+
+
+#goToCakeBtn {
+   position: fixed;
+  bottom: 650px;
+  right: 400px;
+  padding: 12px 25px;
+  font-size: 1.2em;
+  background-color: #d6336c;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  animation: fadeIn 2s ease;
+  z-index: 2;
+}
+
+#goToCakeBtn:hover {
+  background-color: #c2185b;
+}

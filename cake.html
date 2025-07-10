@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Birthday Cake</title>
+  <link rel="stylesheet" href="cake.css">
+</head>
+<body>
+    <a href="celebrate.html" id="nextBtn" class="hidden">Next ➡️</a>
+  <div id="falling-container"></div> <!-- falling candles container -->
+
+  <div class="cake-container">
+    <h1>🎉 Let’s Celebrate! 🎉</h1>
+    <p>Click the cake to blow out the candle and start the magic! ✨</p>
+
+    <!-- Emoji Cake -->
+    <div id="cake" class="emoji-cake">
+      🎂
+      <div id="flame" class="flame">🔥</div>
+    </div>
+
+    
+  </div>
+
+  <audio id="cakeMusic" src="cake_music.mp3"></audio>
+
+  <script>
+    const cake = document.getElementById('cake');
+    const flame = document.getElementById('flame');
+    const music = document.getElementById('cakeMusic');
+    let fallingStarted = false;
+
+    function createFallingCandle() {
+      const el = document.createElement('div');
+      el.classList.add('falling-candle');
+      el.textContent = '🕯️🎈';
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.fontSize = (24 + Math.random() * 10) + 'px';
+      el.style.animationDuration = (4 + Math.random() * 3) + 's';
+      document.getElementById('falling-container').appendChild(el);
+
+      setTimeout(() => el.remove(), 8000);
+    }
+
+    cake.addEventListener('click', () => {
+      if (fallingStarted) return;
+      fallingStarted = true;
+      flame.style.display = 'none';
+      music.play();
+      setInterval(createFallingCandle, 300);
+    });
+
+    
+  </script>
+</body>
+</html>

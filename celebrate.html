@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Celebration Time</title>
+  <link rel="stylesheet" href="celebrate.css">
+</head>
+<body class="dark">
+  <div id="confetti-container"></div>
+
+  <div class="overlay" id="overlay">
+    <h1>🔦 It's dark here...</h1>
+    <p>First, turn the lights on, you’ll see.</p>
+    <button id="turnOnBtn">Turn The Lights On 💡</button>
+  </div>
+
+  <div class="content hidden" id="content">
+    <div class="header">
+      <h1>🎊 Happy Birthday Madam Jii 🎊</h1>
+      <div class="birthday-message-box" 
+        <p>💌 A Message for You 💌 <br>
+        Dear Sujata You're honestly a really amazing girl.
+
+I don’t say this often, but I mean it: there’s something about you that just stands out.
+You light up every space you walk into — without even trying.
+It’s not just your smile (though yeah, it’s beautiful) — it’s the way you carry yourself, the way you talk, the way you care.
+
+On your birthday, I just wanted to tell you that you matter.
+Not just because today’s your special day, but because every day, you’re kind of unforgettable.
+
+I’ve noticed the way you make people feel seen, the way you laugh like you mean it, the way you turn normal moments into something that lingers… something I keep thinking about.
+
+And hey — if you ever let your guard down, just for a moment…
+you’d see it too. The real you — kind, thoughtful, brave, beautiful.
+Not the version that hides behind a little ego now and then — but the version that inspires, the version that makes people stop and admire in silence.
+
+I don’t know if I’ll ever say this out loud the way I should… but I hope this message says enough:
+You're someone I truly appreciate. More than you probably realize.
+
+May this year bring you peace, laughter, and the kind of love that feels safe and honest.
+You deserve it all.
+
+Wishing you the most wonderful birthday! 🎂✨
+
+Someone who cares about you 💕
+
+ 💫</p>
+      </div>
+    </div>
+
+    <p class="wish">Let’s make this year the best one yet! 💖</p>
+    <button id="restartBtn">Start Over 🎁</button>
+  </div>
+
+  <audio id="celebrateMusic" src="celebrate_music.mp3"></audio>
+
+  <script>
+    const turnOnBtn = document.getElementById('turnOnBtn');
+    const overlay = document.getElementById('overlay');
+    const content = document.getElementById('content');
+    const body = document.body;
+    const music = document.getElementById('celebrateMusic');
+    const confettiContainer = document.getElementById('confetti-container');
+
+    function createConfetti() {
+      const el = document.createElement('div');
+      el.classList.add('confetti');
+      el.textContent = ['🎉','✨','🎈','💖'][Math.floor(Math.random()*4)];
+      el.style.left = (Math.random() * 100) + 'vw';
+      el.style.animationDuration = (3 + Math.random() * 2) + 's';
+      confettiContainer.appendChild(el);
+      setTimeout(() => el.remove(), 5000);
+    }
+
+    turnOnBtn.addEventListener('click', () => {
+      body.classList.remove('dark');
+      overlay.classList.add('hidden');
+      content.classList.remove('hidden');
+      music.play();
+      setInterval(createConfetti, 200);
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      window.location.href = 'index.html'; // Adjust to your starting page
+    });
+  </script>
+</body>
+</html>

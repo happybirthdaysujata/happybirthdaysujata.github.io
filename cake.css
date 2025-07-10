@@ -1,0 +1,102 @@
+body {
+  font-family: 'Dancing Script', cursive;
+  background: linear-gradient(to right, #ffecd2, #fcb69f);
+  text-align: center;
+  padding: 50px;
+  overflow-x: hidden;
+}
+
+h1 {
+  font-size: 2.5em;
+  color: #d6336c;
+  margin-bottom: 10px;
+}
+
+p {
+  font-size: 1.2em;
+  color: #333;
+  margin-bottom: 30px;
+}
+
+.emoji-cake {
+  font-size: 400px;
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.emoji-cake:hover {
+  transform: scale(1.05);
+}
+
+.flame {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 70px;
+  animation: flicker 1s infinite ease-in-out;
+}
+
+@keyframes flicker {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 1; }
+  50% { transform: translateX(-50%) scale(1.3); opacity: 0.6; }
+}
+
+
+
+/* Falling candle animation */
+#falling-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.falling-candle {
+  position: absolute;
+  top: -40px;
+  animation-name: fall;
+  animation-timing-function: linear;
+}
+
+@keyframes fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+
+#nextBtn {
+  display: inline-block;
+  margin-top: 300px;
+  padding: 12px 30px;
+  font-size: 1.5em;
+  background: linear-gradient(to right, #ff9a9e, #fad0c4);
+  color: #fff;
+  border: none;
+  border-radius: 30px;
+  text-decoration: none;
+  font-family: 'Dancing Script', cursive;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+#nextBtn:hover {
+  transform: scale(1.05);
+  background: linear-gradient(to right, #fbc2eb, #a6c1ee);
+}
+
+.hidden {
+  display: none;
+}

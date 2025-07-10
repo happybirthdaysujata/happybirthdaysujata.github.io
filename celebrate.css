@@ -1,0 +1,105 @@
+body {
+  margin: 0;
+  font-family: 'Dancing Script', cursive;
+  text-align: center;
+  background: #6352b1;
+  overflow-x: hidden;
+  transition: background 1s;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+body.dark {
+  background: #000;
+  color: #fff;
+}
+
+.hidden {
+  display: none;
+}
+
+.overlay {
+  margin: auto;
+  text-align: center;
+}
+
+.overlay h1 {
+  font-size: 2.5em;
+}
+
+.overlay p {
+  font-size: 1.3em;
+  margin-bottom: 1em;
+}
+
+.content {
+  padding-top: 40px;
+}
+
+.header h1 {
+  font-size: 2.5em;
+  margin-bottom: 20px;
+}
+
+.birthday-message-box {
+  background: white;
+  color: #333;
+  max-width: 600px;
+  max-height: 1300px; /* 👈 LIMIT HEIGHT */
+  margin: 0 auto;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  font-size: 1.2em;
+  line-height: 1.6em;
+  overflow-y: auto; /* 👈 ENABLE VERTICAL SCROLL */
+}
+
+
+.wish {
+  font-size: 1.5em;
+  margin-top: 30px;
+}
+
+button {
+  font-size: 1.9em;
+  padding: 25px 100px;
+  border: none;
+  border-radius: 25px;
+  background: linear-gradient(to right, #eb080f, #fad0c4);
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.3s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  margin-top: 20px;
+}
+
+button:hover {
+  transform: scale(1.05);
+  background: linear-gradient(to right, #fbc2eb, #a6c1ee);
+}
+
+#confetti-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.confetti {
+  position: absolute;
+  top: -10vh;
+  font-size: 2em;
+  animation: fall linear forwards;
+}
+
+@keyframes fall {
+  to {
+    transform: translateY(110vh) rotate(360deg);
+    opacity: 0;
+  }
+}
