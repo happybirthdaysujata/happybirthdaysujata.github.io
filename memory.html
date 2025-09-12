@@ -1,21 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Mirror of Memories</title>
-  <link rel="stylesheet" href="memory.css">
+  <link rel="stylesheet" href="memory.css" />
 </head>
 <body>
-    <div id="falling-container"></div>
+  <div id="falling-container"></div>
   <h1>💖 Mirror of Memories 💖</h1>
+
+  <!-- Upload area -->
+  <div class="upload-row">
+    <label for="uploadInput" class="upload-label">➕ Add Images</label>
+    <input type="file" id="uploadInput" multiple accept="image/*" />
+    <button id="changeBtn" class="control-btn">🔄 Change Image</button>
+    <input type="file" id="changeInput" accept="image/*" style="display:none" />
+    <button id="deleteBtn" class="control-btn">🗑️ Delete Image</button>
+    <button id="clearAllBtn" class="control-btn">Clear All</button>
+  </div>
 
   <div class="slider-container">
     <button id="prevBtn">⬅️</button>
-    
-    <img id="memoryImage" src="img1.jpg" alt="Memory Image">
-    
+
+    <div class="image-frame">
+      <img id="memoryImage" src="" alt="Memory Image" />
+      <div id="imageIndex" class="image-index"></div>
+    </div>
+
     <button id="nextBtn">➡️</button>
   </div>
+
+  <!-- Thumbnails -->
+  <div id="thumbnails" class="thumbnails"></div>
 
   <audio src="memory_music.mp3" autoplay loop></audio>
   <button id="goToCakeBtn">Next Page ➡️</button>
