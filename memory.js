@@ -1,14 +1,13 @@
-/* memory.js (Cloudinary-enabled + persistent storage + compress/rescale)
-   IMPORTANT: set your Cloudinary values below:
-*/
-const CLOUD_NAME = 'dpdvqfoyf';        // ← replace this
-const UPLOAD_PRESET = 'img_preset';     // ← replace this
+/* memory.js (Cloudinary-enabled + persistent storage + compress/rescale + share/import/export) */
+/* Replace CLOUD_NAME and UPLOAD_PRESET with your Cloudinary config */
+const CLOUD_NAME = 'dpdvqfoyf';
+const UPLOAD_PRESET = 'img_preset';
 
 const STORAGE_KEY = 'memories_images_v1';
 const IDB_DB = 'memories-db';
 const IDB_STORE = 'images-store';
 
-let images = []; // array of either dataURLs OR public remote URLs (Cloudinary)
+let images = []; // array of dataURLs OR remote URLs
 let currentIndex = 0;
 
 /* --- DOM --- */
@@ -27,7 +26,20 @@ const clearAllBtn = document.getElementById('clearAllBtn');
 const thumbnails = document.getElementById('thumbnails');
 const imageIndex = document.getElementById('imageIndex');
 
-/* ---------------- IndexedDB helpers ---------------- */
+/* Share UI elements */
+const shareBtn = document.getElementById('shareBtn');
+const shareModal = document.getElementById('shareModal');
+const shareTextarea = document.getElementById('shareTextarea');
+const copyUrlsBtn = document.getElementById('copyUrlsBtn');
+const closeShareBtn = document.getElementById('closeShareBtn');
+
+const downloadBtn = document.getElementById('downloadBtn');
+const importInput = document.getElementById('importInput');
+const loadUrlInput = document.getElementById('loadUrlInput');
+const loadUrlBtn = document.getElementById('loadUrlBtn');
+
+/* ---------------- (IDB helpers and storage) ---------------- */
+// ... (same IDB/localStorage helpers as earlier) ...
 function openIdb() {
   return new Promise((resolve, reject) => {
     if (!('indexedDB' in window)) return reject(new Error('IndexedDB not supported'));
@@ -80,7 +92,6 @@ async function idbLoadImages() {
   }
 }
 
-/* ---------------- Storage helpers (localStorage + IDB fallback) ---------------- */
 async function saveImagesToStorage() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
@@ -100,22 +111,18 @@ async function saveImagesToStorage() {
 }
 
 async function loadImagesFromStorage() {
-  // try localStorage
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        console.log('Loaded images from localStorage (count:', parsed.length, ')');
         images = parsed;
+        console.log('Loaded images from localStorage (count:', parsed.length, ')');
         return;
       }
     }
-  } catch (e) {
-    console.warn('Could not parse localStorage data:', e);
-  }
+  } catch (e) { console.warn('Could not parse localStorage data:', e); }
 
-  // fallback to IDB
   try {
     const idbImgs = await idbLoadImages();
     if (Array.isArray(idbImgs)) {
@@ -123,15 +130,13 @@ async function loadImagesFromStorage() {
       console.log('Loaded images from IndexedDB (count:', images.length, ')');
       return;
     }
-  } catch (e) {
-    console.warn('idbLoadImages failed:', e);
-  }
+  } catch (e) { console.warn('idbLoadImages failed:', e); }
 
   images = [];
   console.log('No saved images found.');
 }
 
-/* ---------------- Image resize / compress ---------------- */
+/* ---------------- image compress/upload helpers (same as before) ---------------- */
 function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
     const fr = new FileReader();
@@ -167,15 +172,11 @@ async function resizeImageFile(file, maxDim = 1200, quality = 0.78) {
       const compressed = canvas.toDataURL('image/jpeg', quality);
       resolve(compressed);
     };
-    img.onerror = () => {
-      console.warn('Image load failed for resizing; using raw data URL.');
-      resolve(dataUrl);
-    };
+    img.onerror = () => { console.warn('Image load failed for resizing; using raw data URL.'); resolve(dataUrl); };
     img.src = dataUrl;
   });
 }
 
-/* convert dataURL -> Blob */
 function dataURLToBlob(dataurl) {
   const arr = dataurl.split(',');
   const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'image/jpeg';
@@ -186,16 +187,12 @@ function dataURLToBlob(dataurl) {
   return new Blob([u8arr], { type: mime });
 }
 
-/* ---------------- Cloudinary upload ---------------- */
 async function uploadToCloudinary(fileOrBlob, filename = 'upload.jpg') {
-  if (!CLOUD_NAME || !UPLOAD_PRESET) {
-    throw new Error('Cloudinary not configured. Set CLOUD_NAME and UPLOAD_PRESET.');
-  }
+  if (!CLOUD_NAME || !UPLOAD_PRESET) throw new Error('Cloudinary not configured.');
   const endpoint = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
   const fd = new FormData();
   fd.append('file', fileOrBlob, filename);
   fd.append('upload_preset', UPLOAD_PRESET);
-
   const resp = await fetch(endpoint, { method: 'POST', body: fd });
   if (!resp.ok) {
     const text = await resp.text().catch(() => '');
@@ -205,7 +202,7 @@ async function uploadToCloudinary(fileOrBlob, filename = 'upload.jpg') {
   return { url: data.secure_url || data.url, raw: data };
 }
 
-/* ---------------- UI functions ---------------- */
+/* ---------------- UI: thumbnails & image display ---------------- */
 function updateThumbnails() {
   if (!thumbnails) return;
   thumbnails.innerHTML = '';
@@ -248,26 +245,16 @@ function showImage(index) {
   updateThumbnails();
 }
 
-/* ---------------- Navigation / buttons ---------------- */
+/* ---------------- Navigation buttons ---------------- */
 if (prevBtn) prevBtn.addEventListener('click', () => {
-  if (images.length > 0) {
-    currentIndex = (currentIndex - 1 + images.length) % images.length;
-    showImage(currentIndex);
-  }
+  if (images.length > 0) { currentIndex = (currentIndex - 1 + images.length) % images.length; showImage(currentIndex); }
 });
-
 if (nextBtn) nextBtn.addEventListener('click', () => {
-  if (images.length > 0) {
-    currentIndex = (currentIndex + 1) % images.length;
-    showImage(currentIndex);
-  }
+  if (images.length > 0) { currentIndex = (currentIndex + 1) % images.length; showImage(currentIndex); }
 });
+if (goToCakeBtn) goToCakeBtn.addEventListener('click', () => { window.location.href = 'cake.html'; });
 
-if (goToCakeBtn) goToCakeBtn.addEventListener('click', () => {
-  window.location.href = 'cake.html';
-});
-
-/* ---------------- Upload (add) handler - compress, upload to Cloudinary, fallback to local dataURL ---------------- */
+/* ---------------- Upload handler (unchanged) ---------------- */
 if (uploadInput) {
   uploadInput.addEventListener('change', async (e) => {
     const files = Array.from(e.target.files || []);
@@ -275,15 +262,9 @@ if (uploadInput) {
 
     for (const file of files) {
       if (!file.type.startsWith('image/')) continue;
-
       let compressedDataUrl;
-      try {
-        compressedDataUrl = await resizeImageFile(file, 1200, 0.78);
-      } catch (err) {
-        console.warn('Compression failed, reading original', err);
-        compressedDataUrl = await readFileAsDataURL(file);
-      }
-
+      try { compressedDataUrl = await resizeImageFile(file, 1200, 0.78); } 
+      catch (err) { console.warn('Compression failed, reading original', err); compressedDataUrl = await readFileAsDataURL(file); }
       const blob = dataURLToBlob(compressedDataUrl);
 
       // Try Cloudinary upload
@@ -296,7 +277,6 @@ if (uploadInput) {
         console.warn('Cloudinary upload failed, falling back to local data URL', uploadErr);
         publicUrl = null;
       }
-
       if (publicUrl) images.push(publicUrl);
       else images.push(compressedDataUrl);
     }
@@ -309,37 +289,20 @@ if (uploadInput) {
   });
 }
 
-/* ---------------- Change (replace current) ---------------- */
+/* ---------------- Change / Delete / Clear (unchanged) ---------------- */
 if (changeBtn) {
   changeBtn.addEventListener('click', () => {
-    if (images.length === 0) {
-      alert('No images to change. Please add an image first.');
-      return;
-    }
+    if (images.length === 0) { alert('No images to change. Please add an image first.'); return; }
     if (changeInput) changeInput.click();
   });
 }
-
 if (changeInput) {
   changeInput.addEventListener('change', async (e) => {
     const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file.');
-      changeInput.value = '';
-      return;
-    }
-
+    if (!file) return; if (!file.type.startsWith('image/')) { alert('Please select an image file.'); changeInput.value = ''; return; }
     let compressedDataUrl;
-    try {
-      compressedDataUrl = await resizeImageFile(file, 1200, 0.78);
-    } catch (err) {
-      console.warn('Compression failed for change, using original', err);
-      compressedDataUrl = await readFileAsDataURL(file);
-    }
-
+    try { compressedDataUrl = await resizeImageFile(file, 1200, 0.78); } catch (err) { compressedDataUrl = await readFileAsDataURL(file); }
     const blob = dataURLToBlob(compressedDataUrl);
-
     try {
       const res = await uploadToCloudinary(blob, file.name.replace(/\s+/g, '_'));
       images[currentIndex] = res.url;
@@ -348,49 +311,146 @@ if (changeInput) {
       console.warn('Cloudinary change upload failed, using local dataURL fallback', err);
       images[currentIndex] = compressedDataUrl;
     }
-
     const ok = await saveImagesToStorage();
     if (!ok) alert('Saving updated image list failed (storage issue).');
     showImage(currentIndex);
     changeInput.value = '';
   });
 }
-
-/* ---------------- Delete & Clear ---------------- */
 if (deleteBtn) deleteBtn.addEventListener('click', async () => {
   if (images.length === 0) { alert('No images to delete.'); return; }
-  const yes = confirm('Delete the current image? This cannot be undone.');
-  if (!yes) return;
+  const yes = confirm('Delete the current image? This cannot be undone.'); if (!yes) return;
   images.splice(currentIndex, 1);
   if (currentIndex >= images.length) currentIndex = images.length - 1;
   const ok = await saveImagesToStorage();
   if (!ok) alert('Update failed when deleting image (storage issue).');
   showImage(currentIndex);
 });
-
 if (clearAllBtn) clearAllBtn.addEventListener('click', async () => {
   if (images.length === 0) { alert('Nothing to clear.'); return; }
-  const yes = confirm('Clear all saved images from this browser?');
-  if (!yes) return;
-  images = [];
-  currentIndex = 0;
+  const yes = confirm('Clear all saved images from this browser?'); if (!yes) return;
+  images = []; currentIndex = 0;
   const ok = await saveImagesToStorage();
   if (!ok) alert('Failed to clear storage.');
   showImage(currentIndex);
 });
 
+/* ---------------- Share / Export / Import functions ---------------- */
+
+/* Build newline-separated list of URLs (prefer remote URLs if present) */
+function getShareableUrls() {
+  // images[] may contain Cloudinary URLs or local dataURLs; include both.
+  return images.map((u, i) => u).join('\n');
+}
+
+/* Show share modal with URLs */
+if (shareBtn && shareModal && shareTextarea) {
+  shareBtn.addEventListener('click', () => {
+    shareTextarea.value = getShareableUrls();
+    shareModal.style.display = 'flex';
+    shareModal.setAttribute('aria-hidden', 'false');
+    shareTextarea.focus();
+    shareTextarea.select();
+  });
+  closeShareBtn.addEventListener('click', () => {
+    shareModal.style.display = 'none';
+    shareModal.setAttribute('aria-hidden', 'true');
+  });
+  // copy to clipboard
+  copyUrlsBtn.addEventListener('click', async () => {
+    const txt = shareTextarea.value;
+    try {
+      await navigator.clipboard.writeText(txt);
+      copyUrlsBtn.textContent = '✅ Copied';
+      setTimeout(() => (copyUrlsBtn.textContent = '📋 Copy URLs'), 1500);
+    } catch (e) {
+      alert('Copy failed — please select and copy manually.');
+    }
+  });
+}
+
+/* Download JSON file of images array */
+if (downloadBtn) {
+  downloadBtn.addEventListener('click', () => {
+    const payload = { createdAt: Date.now(), images };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'memories_gallery.json'; document.body.appendChild(a);
+    a.click(); a.remove(); URL.revokeObjectURL(url);
+  });
+}
+
+/* Import JSON file (expects { images: [...] } or plain array) */
+if (importInput) {
+  importInput.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        let imported = null;
+        if (Array.isArray(parsed)) imported = parsed;
+        else if (parsed && Array.isArray(parsed.images)) imported = parsed.images;
+        else if (parsed && Array.isArray(parsed.data)) imported = parsed.data;
+        if (!Array.isArray(imported)) throw new Error('Invalid JSON format. Expected { images: [...] } or an array.');
+        // merge but avoid duplicates (simple)
+        const set = new Set(images);
+        for (const u of imported) if (!set.has(u)) { images.push(u); set.add(u); }
+        await saveImagesToStorage();
+        showImage(images.length ? images.length - 1 : 0);
+        alert('Imported ' + imported.length + ' images (duplicates ignored).');
+      } catch (err) {
+        alert('Import failed: ' + err.message);
+      } finally {
+        importInput.value = '';
+      }
+    };
+    reader.onerror = () => { alert('Failed to read file.'); importInput.value = ''; };
+    reader.readAsText(f);
+  });
+}
+
+/* Load gallery JSON from a public URL (CORS must allow it) */
+if (loadUrlBtn && loadUrlInput) {
+  loadUrlBtn.addEventListener('click', async () => {
+    const url = loadUrlInput.value.trim();
+    if (!url) { alert('Enter a URL to load'); return; }
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('Fetch failed: ' + resp.status);
+      const parsed = await resp.json();
+      let imported = null;
+      if (Array.isArray(parsed)) imported = parsed;
+      else if (parsed && Array.isArray(parsed.images)) imported = parsed.images;
+      else if (parsed && Array.isArray(parsed.data)) imported = parsed.data;
+      if (!Array.isArray(imported)) throw new Error('Invalid JSON from URL');
+      const set = new Set(images);
+      for (const u of imported) if (!set.has(u)) { images.push(u); set.add(u); }
+      await saveImagesToStorage();
+      showImage(images.length ? images.length - 1 : 0);
+      alert('Loaded ' + imported.length + ' images from URL (duplicates ignored).');
+    } catch (err) {
+      alert('Load failed: ' + err.message);
+    }
+  });
+}
+
 /* ---------------- Init ---------------- */
 async function init() {
   await loadImagesFromStorage();
-  if (images.length === 0) {
-    memoryImage.src = '';
-    if (imageIndex) imageIndex.textContent = 'No images';
-  } else {
-    showImage(0);
-  }
+  if (images.length === 0) { memoryImage.src = ''; if (imageIndex) imageIndex.textContent = 'No images'; }
+  else showImage(0);
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') prevBtn && prevBtn.click();
     if (e.key === 'ArrowRight') nextBtn && nextBtn.click();
+  });
+
+  // hide modal when clicking outside content
+  window.addEventListener('click', (ev) => {
+    if (ev.target === shareModal) { shareModal.style.display = 'none'; shareModal.setAttribute('aria-hidden', 'true'); }
   });
 }
 
