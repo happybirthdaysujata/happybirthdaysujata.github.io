@@ -3,39 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <title>Mirror of Memories</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="memory.css" />
 </head>
 <body>
   <div id="falling-container"></div>
+
   <h1>💖 Mirror of Memories 💖</h1>
 
-  <!-- Upload area -->
+  <!-- Upload controls -->
   <div class="upload-row">
     <label for="uploadInput" class="upload-label">➕ Add Images</label>
     <input type="file" id="uploadInput" multiple accept="image/*" />
+
     <button id="changeBtn" class="control-btn">🔄 Change Image</button>
     <input type="file" id="changeInput" accept="image/*" style="display:none" />
+
     <button id="deleteBtn" class="control-btn">🗑️ Delete Image</button>
     <button id="clearAllBtn" class="control-btn">Clear All</button>
   </div>
 
+  <!-- Slider -->
   <div class="slider-container">
-    <button id="prevBtn">⬅️</button>
+    <button id="prevBtn" aria-label="Previous image">⬅️</button>
 
-    <div class="image-frame">
+    <div class="image-frame" aria-live="polite">
       <img id="memoryImage" src="" alt="Memory Image" />
-      <div id="imageIndex" class="image-index"></div>
+      <div id="imageIndex" class="image-index">No images</div>
     </div>
 
-    <button id="nextBtn">➡️</button>
+    <button id="nextBtn" aria-label="Next image">➡️</button>
   </div>
 
   <!-- Thumbnails -->
-  <div id="thumbnails" class="thumbnails"></div>
+  <div id="thumbnails" class="thumbnails" aria-hidden="false"></div>
 
+  <!-- Background music (optional) -->
   <audio src="memory_music.mp3" autoplay loop></audio>
+
+  <!-- Next page -->
   <button id="goToCakeBtn">Next Page ➡️</button>
 
   <script src="memory.js"></script>
 </body>
 </html>
+
