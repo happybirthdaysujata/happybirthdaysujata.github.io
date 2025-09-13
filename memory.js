@@ -1,16 +1,17 @@
-// memory.js (updated)
-// - Resizes/compresses images before saving (reduces size)
-// - Saves to localStorage; if that fails falls back to IndexedDB
-// - Loads from either localStorage or IndexedDB at init
-// - Retains add / change / delete / thumbnails behavior
+/* memory.js (Cloudinary-enabled + persistent storage + compress/rescale)
+   IMPORTANT: set your Cloudinary values below:
+*/
+const CLOUD_NAME = 'dpdvqfoyf';        // ← replace this
+const UPLOAD_PRESET = 'img_preset';     // ← replace this
 
 const STORAGE_KEY = 'memories_images_v1';
 const IDB_DB = 'memories-db';
 const IDB_STORE = 'images-store';
 
-let images = []; // array of data URLs
+let images = []; // array of either dataURLs OR public remote URLs (Cloudinary)
 let currentIndex = 0;
 
+/* --- DOM --- */
 const memoryImage = document.getElementById('memoryImage');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
@@ -26,7 +27,7 @@ const clearAllBtn = document.getElementById('clearAllBtn');
 const thumbnails = document.getElementById('thumbnails');
 const imageIndex = document.getElementById('imageIndex');
 
-// ------------------ IndexedDB helpers ------------------
+/* ---------------- IndexedDB helpers ---------------- */
 function openIdb() {
   return new Promise((resolve, reject) => {
     if (!('indexedDB' in window)) return reject(new Error('IndexedDB not supported'));
@@ -79,7 +80,7 @@ async function idbLoadImages() {
   }
 }
 
-// ------------------ localStorage helpers (with fallback) ------------------
+/* ---------------- Storage helpers (localStorage + IDB fallback) ---------------- */
 async function saveImagesToStorage() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
@@ -87,7 +88,6 @@ async function saveImagesToStorage() {
     return true;
   } catch (e) {
     console.warn('localStorage.setItem failed:', e);
-    // try IndexedDB fallback
     try {
       await idbSaveImages(images);
       console.log('Saved images to IndexedDB as fallback.');
@@ -100,7 +100,7 @@ async function saveImagesToStorage() {
 }
 
 async function loadImagesFromStorage() {
-  // 1) try localStorage
+  // try localStorage
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -115,7 +115,7 @@ async function loadImagesFromStorage() {
     console.warn('Could not parse localStorage data:', e);
   }
 
-  // 2) fallback to IndexedDB
+  // fallback to IDB
   try {
     const idbImgs = await idbLoadImages();
     if (Array.isArray(idbImgs)) {
@@ -127,12 +127,11 @@ async function loadImagesFromStorage() {
     console.warn('idbLoadImages failed:', e);
   }
 
-  // nothing found
   images = [];
   console.log('No saved images found.');
 }
 
-// ------------------ image resize/compress ------------------
+/* ---------------- Image resize / compress ---------------- */
 function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
     const fr = new FileReader();
@@ -143,7 +142,6 @@ function readFileAsDataURL(file) {
 }
 
 async function resizeImageFile(file, maxDim = 1200, quality = 0.78) {
-  // read as data URL first
   const dataUrl = await readFileAsDataURL(file);
   return new Promise((resolve) => {
     const img = new Image();
@@ -163,25 +161,53 @@ async function resizeImageFile(file, maxDim = 1200, quality = 0.78) {
       canvas.width = targetW;
       canvas.height = targetH;
       const ctx = canvas.getContext('2d');
-      // white background in case of JPEG conversion (keeps visuals)
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      // convert to jpeg for much smaller size; transparency lost but usually okay for photos
       const compressed = canvas.toDataURL('image/jpeg', quality);
       resolve(compressed);
     };
     img.onerror = () => {
-      // if image fails to load, fallback to raw dataUrl
-      console.warn('Failed to load image for resizing; using original data URL.');
+      console.warn('Image load failed for resizing; using raw data URL.');
       resolve(dataUrl);
     };
     img.src = dataUrl;
   });
 }
 
-// ------------------ UI & helpers ------------------
+/* convert dataURL -> Blob */
+function dataURLToBlob(dataurl) {
+  const arr = dataurl.split(',');
+  const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'image/jpeg';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new Blob([u8arr], { type: mime });
+}
+
+/* ---------------- Cloudinary upload ---------------- */
+async function uploadToCloudinary(fileOrBlob, filename = 'upload.jpg') {
+  if (!CLOUD_NAME || !UPLOAD_PRESET) {
+    throw new Error('Cloudinary not configured. Set CLOUD_NAME and UPLOAD_PRESET.');
+  }
+  const endpoint = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
+  const fd = new FormData();
+  fd.append('file', fileOrBlob, filename);
+  fd.append('upload_preset', UPLOAD_PRESET);
+
+  const resp = await fetch(endpoint, { method: 'POST', body: fd });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error('Cloudinary upload failed: ' + resp.status + ' ' + text);
+  }
+  const data = await resp.json();
+  return { url: data.secure_url || data.url, raw: data };
+}
+
+/* ---------------- UI functions ---------------- */
 function updateThumbnails() {
+  if (!thumbnails) return;
   thumbnails.innerHTML = '';
   images.forEach((dataUrl, idx) => {
     const btn = document.createElement('button');
@@ -207,102 +233,134 @@ function updateThumbnails() {
 }
 
 function showImage(index) {
+  if (!memoryImage) return;
   if (images.length === 0) {
     memoryImage.src = '';
     memoryImage.alt = 'No images uploaded yet';
-    imageIndex.textContent = 'No images';
+    if (imageIndex) imageIndex.textContent = 'No images';
     updateThumbnails();
     return;
   }
   currentIndex = ((index % images.length) + images.length) % images.length;
   memoryImage.src = images[currentIndex];
   memoryImage.alt = `Memory ${currentIndex + 1}`;
-  imageIndex.textContent = `${currentIndex + 1} / ${images.length}`;
+  if (imageIndex) imageIndex.textContent = `${currentIndex + 1} / ${images.length}`;
   updateThumbnails();
 }
 
-// ---------- Navigation ----------
-prevBtn.addEventListener('click', () => {
+/* ---------------- Navigation / buttons ---------------- */
+if (prevBtn) prevBtn.addEventListener('click', () => {
   if (images.length > 0) {
     currentIndex = (currentIndex - 1 + images.length) % images.length;
     showImage(currentIndex);
   }
 });
 
-nextBtn.addEventListener('click', () => {
+if (nextBtn) nextBtn.addEventListener('click', () => {
   if (images.length > 0) {
     currentIndex = (currentIndex + 1) % images.length;
     showImage(currentIndex);
   }
 });
 
-goToCakeBtn.addEventListener('click', () => {
+if (goToCakeBtn) goToCakeBtn.addEventListener('click', () => {
   window.location.href = 'cake.html';
 });
 
-// ---------- Upload (add) ----------
-uploadInput.addEventListener('change', async (e) => {
-  const files = Array.from(e.target.files || []);
-  if (files.length === 0) return;
+/* ---------------- Upload (add) handler - compress, upload to Cloudinary, fallback to local dataURL ---------------- */
+if (uploadInput) {
+  uploadInput.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-  for (const file of files) {
-    if (!file.type.startsWith('image/')) continue;
-    try {
-      const compressed = await resizeImageFile(file, 1200, 0.78);
-      images.push(compressed);
-    } catch (err) {
-      console.warn('Error compressing file, using original:', err);
-      const raw = await readFileAsDataURL(file);
-      images.push(raw);
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue;
+
+      let compressedDataUrl;
+      try {
+        compressedDataUrl = await resizeImageFile(file, 1200, 0.78);
+      } catch (err) {
+        console.warn('Compression failed, reading original', err);
+        compressedDataUrl = await readFileAsDataURL(file);
+      }
+
+      const blob = dataURLToBlob(compressedDataUrl);
+
+      // Try Cloudinary upload
+      let publicUrl = null;
+      try {
+        const res = await uploadToCloudinary(blob, file.name.replace(/\s+/g, '_'));
+        publicUrl = res.url;
+        console.log('Uploaded to Cloudinary:', publicUrl);
+      } catch (uploadErr) {
+        console.warn('Cloudinary upload failed, falling back to local data URL', uploadErr);
+        publicUrl = null;
+      }
+
+      if (publicUrl) images.push(publicUrl);
+      else images.push(compressedDataUrl);
     }
-  }
 
-  const ok = await saveImagesToStorage();
-  if (!ok) alert('Saving images failed (storage full or blocked). Try removing some images or use a browser that allows storage.');
-  currentIndex = images.length - 1;
-  showImage(currentIndex);
-  uploadInput.value = '';
-});
-
-// ---------- Change (replace current) ----------
-changeBtn.addEventListener('click', () => {
-  if (images.length === 0) {
-    alert('No images to change. Please add an image first.');
-    return;
-  }
-  changeInput.click();
-});
-
-changeInput.addEventListener('change', async (e) => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  if (!file.type.startsWith('image/')) {
-    alert('Please select an image file.');
-    changeInput.value = '';
-    return;
-  }
-  try {
-    const compressed = await resizeImageFile(file, 1200, 0.78);
-    images[currentIndex] = compressed;
     const ok = await saveImagesToStorage();
-    if (!ok) alert('Saving updated image failed (storage full or blocked).');
+    if (!ok) alert('Saving image list failed (storage full or blocked). Uploaded images may still exist on Cloudinary.');
+    currentIndex = images.length - 1;
     showImage(currentIndex);
-  } catch (err) {
-    console.warn('Failed to replace image:', err);
-  } finally {
-    changeInput.value = '';
-  }
-});
+    uploadInput.value = '';
+  });
+}
 
-// ---------- Delete ----------
-deleteBtn.addEventListener('click', async () => {
-  if (images.length === 0) {
-    alert('No images to delete.');
-    return;
-  }
+/* ---------------- Change (replace current) ---------------- */
+if (changeBtn) {
+  changeBtn.addEventListener('click', () => {
+    if (images.length === 0) {
+      alert('No images to change. Please add an image first.');
+      return;
+    }
+    if (changeInput) changeInput.click();
+  });
+}
+
+if (changeInput) {
+  changeInput.addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      changeInput.value = '';
+      return;
+    }
+
+    let compressedDataUrl;
+    try {
+      compressedDataUrl = await resizeImageFile(file, 1200, 0.78);
+    } catch (err) {
+      console.warn('Compression failed for change, using original', err);
+      compressedDataUrl = await readFileAsDataURL(file);
+    }
+
+    const blob = dataURLToBlob(compressedDataUrl);
+
+    try {
+      const res = await uploadToCloudinary(blob, file.name.replace(/\s+/g, '_'));
+      images[currentIndex] = res.url;
+      console.log('Replaced image uploaded to Cloudinary:', res.url);
+    } catch (err) {
+      console.warn('Cloudinary change upload failed, using local dataURL fallback', err);
+      images[currentIndex] = compressedDataUrl;
+    }
+
+    const ok = await saveImagesToStorage();
+    if (!ok) alert('Saving updated image list failed (storage issue).');
+    showImage(currentIndex);
+    changeInput.value = '';
+  });
+}
+
+/* ---------------- Delete & Clear ---------------- */
+if (deleteBtn) deleteBtn.addEventListener('click', async () => {
+  if (images.length === 0) { alert('No images to delete.'); return; }
   const yes = confirm('Delete the current image? This cannot be undone.');
   if (!yes) return;
-
   images.splice(currentIndex, 1);
   if (currentIndex >= images.length) currentIndex = images.length - 1;
   const ok = await saveImagesToStorage();
@@ -310,12 +368,8 @@ deleteBtn.addEventListener('click', async () => {
   showImage(currentIndex);
 });
 
-// ---------- Clear All ----------
-clearAllBtn.addEventListener('click', async () => {
-  if (images.length === 0) {
-    alert('Nothing to clear.');
-    return;
-  }
+if (clearAllBtn) clearAllBtn.addEventListener('click', async () => {
+  if (images.length === 0) { alert('Nothing to clear.'); return; }
   const yes = confirm('Clear all saved images from this browser?');
   if (!yes) return;
   images = [];
@@ -325,18 +379,18 @@ clearAllBtn.addEventListener('click', async () => {
   showImage(currentIndex);
 });
 
-// ---------- Init ----------
+/* ---------------- Init ---------------- */
 async function init() {
   await loadImagesFromStorage();
   if (images.length === 0) {
     memoryImage.src = '';
-    imageIndex.textContent = 'No images';
+    if (imageIndex) imageIndex.textContent = 'No images';
   } else {
     showImage(0);
   }
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') prevBtn.click();
-    if (e.key === 'ArrowRight') nextBtn.click();
+    if (e.key === 'ArrowLeft') prevBtn && prevBtn.click();
+    if (e.key === 'ArrowRight') nextBtn && nextBtn.click();
   });
 }
 
