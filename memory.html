@@ -38,6 +38,28 @@
   <!-- Thumbnails -->
   <div id="thumbnails" class="thumbnails" aria-hidden="false"></div>
 
+  <!-- Share / Export / Import row -->
+  <div class="share-row">
+    <button id="shareBtn" class="control-btn">🔗 Share / Export</button>
+    <button id="downloadBtn" class="control-btn">⬇️ Download JSON</button>
+    <label for="importInput" class="upload-label small">⤓ Import JSON</label>
+    <input type="file" id="importInput" accept="application/json" style="display:none" />
+    <input type="text" id="loadUrlInput" placeholder="Load from public JSON URL (optional)" />
+    <button id="loadUrlBtn" class="control-btn">Load</button>
+  </div>
+
+  <!-- Share modal (hidden by default) -->
+  <div id="shareModal" class="modal" aria-hidden="true">
+    <div class="modal-content">
+      <h3>Shareable image URLs</h3>
+      <textarea id="shareTextarea" readonly rows="8" placeholder="No images yet..."></textarea>
+      <div class="modal-actions">
+        <button id="copyUrlsBtn" class="control-btn">📋 Copy URLs</button>
+        <button id="closeShareBtn" class="control-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Background music (optional) -->
   <audio src="memory_music.mp3" autoplay loop></audio>
 
@@ -47,4 +69,5 @@
   <script src="memory.js"></script>
 </body>
 </html>
+
 
