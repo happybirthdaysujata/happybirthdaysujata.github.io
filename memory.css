@@ -1,6 +1,6 @@
-/* memory.css - updated for uploads, thumbnails, change/delete controls */
+/* memory.css - full updated stylesheet (uploads, thumbnails, modal, responsive) */
 
-/* --- base & typography --- */
+/* --- font & root variables --- */
 @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap');
 
 :root{
@@ -12,6 +12,10 @@
   --muted: rgba(0,0,0,0.55);
 }
 
+/* --- base & typography --- */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
 body {
   font-family: 'Dancing Script', cursive;
   background: linear-gradient(to right, var(--bg-start), var(--bg-end));
@@ -20,7 +24,6 @@ body {
   margin: 0;
   color: #3b2b2b;
   min-height: 100vh;
-  box-sizing: border-box;
 }
 
 /* heading */
@@ -65,7 +68,8 @@ h1 {
 
 /* hidden native input */
 #uploadInput,
-#changeInput {
+#changeInput,
+#importInput {
   display: none;
 }
 
@@ -232,7 +236,7 @@ h1 {
   }
 }
 
-/* --- go to cake button (kept but slightly responsive) --- */
+/* --- go to cake button --- */
 #goToCakeBtn {
   position: fixed;
   bottom: 42px;
@@ -261,9 +265,82 @@ h1 {
 
 /* --- utility & accessibility --- */
 button:focus,
-.upload-label:focus {
+.upload-label:focus,
+input:focus,
+textarea:focus {
   outline: 3px solid rgba(214,51,108,0.18);
   outline-offset: 3px;
+}
+
+/* subtle hover on main image to feel interactive */
+.image-frame:hover #memoryImage {
+  filter: saturate(1.04) brightness(1.02);
+  transform: scale(1.006);
+}
+
+/* --- share/export/import UI styles --- */
+.share-row {
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:center;
+  margin-top:12px;
+  flex-wrap:wrap;
+  z-index:2;
+}
+
+.share-row input[type="text"] {
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid rgba(0,0,0,0.08);
+  min-width:240px;
+  font-family: inherit;
+}
+
+/* modal */
+.modal {
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background: rgba(0,0,0,0.35);
+  z-index: 999;
+  padding: 18px;
+}
+
+.modal-content {
+  background: white;
+  padding: 18px;
+  border-radius: 10px;
+  width: min(760px, 94%);
+  max-height: 84vh;
+  overflow:auto;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+  text-align: left;
+}
+
+.modal-content h3 {
+  margin: 0 0 8px 0;
+  font-family: inherit;
+  color: #333;
+}
+
+#shareTextarea {
+  width: 100%;
+  resize: vertical;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Dancing Script", cursive;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.06);
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.modal-actions {
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  margin-top: 10px;
 }
 
 /* responsive tweaks */
@@ -273,6 +350,7 @@ button:focus,
   .thumb-img { width: 56px; height: 56px; }
   #prevBtn, #nextBtn { width: 50px; height: 50px; }
   .control-btn { padding: 8px 10px; font-size: 0.9rem; }
+  .share-row input[type="text"] { min-width: 160px; }
 }
 
 @media (max-width: 520px) {
@@ -283,12 +361,16 @@ button:focus,
   .thumbnails { padding: 6px; gap: 6px; }
   .thumb-img { width: 48px; height: 48px; }
   #goToCakeBtn { right: 18px; bottom: 18px; padding: 10px 14px; font-size: 0.95rem; }
+  .share-row input[type="text"] { min-width: 120px; }
 }
 
-/* subtle hover on main image to feel interactive */
-.image-frame:hover #memoryImage {
-  filter: saturate(1.04) brightness(1.02);
-  transform: scale(1.006);
+/* small utility for hidden accessible labels */
+.visually-hidden {
+  position: absolute !important;
+  height: 1px; width: 1px;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
+  white-space: nowrap;
 }
 
 
