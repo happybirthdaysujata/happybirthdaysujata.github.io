@@ -7,7 +7,7 @@
 /* ======= CONFIG - EDIT THESE ======= */
 const SUPABASE_URL = 'https://jeibfypjxiolkezasjku.supabase.co'; // ← replace
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplaWJmeXBqeGlvbGtlemFzamt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4Mzk3MjcsImV4cCI6MjA3MzQxNTcyN30.HQAJ7TXg-5SAH3d7io-HTyrjF-p66ddAHjwPUY-tayI';            // ← replace
-const SUPABASE_BUCKET = 'img_gallery';                         // ← replace with your bucket name
+const SUPABASE_BUCKET = 'gallery';                         // ← replace with your bucket name
 /* =================================== */
 
 const STORAGE_KEY = 'memories_images_v1';
@@ -354,5 +354,6 @@ async function init() {
 }
 
 init();
+
 
 
