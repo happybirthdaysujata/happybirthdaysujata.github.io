@@ -1,4 +1,4 @@
-/* memory.css - Supabase realtime gallery styles (minimal & pleasant) */
+/* memory.css - lightweight styles for Mirror of Memories */
 
 /* font & vars */
 @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap');
@@ -23,10 +23,8 @@ body {
   min-height: 100vh;
 }
 
-/* heading */
 h1 { font-size: 2.2rem; color: var(--accent); margin: 8px 0 20px; }
 
-/* upload row */
 .upload-row {
   display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-bottom:18px; z-index:2;
 }
@@ -43,7 +41,6 @@ h1 { font-size: 2.2rem; color: var(--accent); margin: 8px 0 20px; }
 }
 .control-btn:hover { transform: translateY(-3px); background:var(--accent-dark); }
 
-/* slider */
 .slider-container { display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:12px; }
 #prevBtn, #nextBtn {
   width:56px; height:56px; border-radius:12px; border:0; background:rgba(255,255,255,0.9); font-size:1.6rem; cursor:pointer;
@@ -62,20 +59,16 @@ h1 { font-size: 2.2rem; color: var(--accent); margin: 8px 0 20px; }
   color:var(--muted); box-shadow: 0 6px 18px rgba(0,0,0,0.06);
 }
 
-/* thumbnails */
 .thumbnails { display:flex; gap:8px; justify-content:center; align-items:center; margin-top:12px; overflow-x:auto; padding:6px 10px; }
 .thumb-btn { border:2px solid transparent; background:transparent; padding:2px; border-radius:8px; cursor:pointer; min-width:56px; min-height:56px; display:inline-grid; place-items:center; }
 .thumb-btn.active-thumb { border-color: rgba(214,51,108,0.15); transform: translateY(-3px); box-shadow:0 8px 18px rgba(198,40,115,0.08); }
 .thumb-img { width:56px; height:56px; object-fit:cover; border-radius:6px; }
 
-/* small adjustments */
 #goToCakeBtn { position:fixed; right:20px; bottom:20px; padding:10px 14px; border-radius:10px; background:var(--accent); color:#fff; border:0; box-shadow:0 10px 28px rgba(198,40,115,0.12); cursor:pointer; }
 #goToCakeBtn:hover { background:var(--accent-dark); }
 
-/* falling placeholder */
 #falling-container { position:fixed; inset:0; pointer-events:none; z-index:0; }
 
-/* responsive */
 @media (max-width:980px) {
   .image-frame { width:86vw; height:calc(86vw * 1.25); max-width:700px; max-height:900px; }
   .thumb-img { width:48px; height:48px; }
@@ -85,4 +78,5 @@ h1 { font-size: 2.2rem; color: var(--accent); margin: 8px 0 20px; }
   h1 { font-size:1.7rem; } .image-frame { width:94vw; height:calc(94vw * 1.25); }
   .upload-row { gap:8px; }
 }
+
 
