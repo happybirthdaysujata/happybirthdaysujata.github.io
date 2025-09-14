@@ -1,14 +1,9 @@
-/* memory.js
-   Supabase Storage + Realtime gallery
-   1) Replace the three placeholders below with your Supabase project values.
-   2) Serve the files over http(s) (e.g. python -m http.server 8000) and open memory.html.
+/* memory.js - Supabase realtime gallery for GitHub Pages
+   EDIT THESE with your Supabase project values before committing to GitHub:
 */
-
-/* ======= CONFIG - EDIT THESE ======= */
 const SUPABASE_URL = 'https://jeibfypjxiolkezasjku.supabase.co'; // ← replace
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplaWJmeXBqeGlvbGtlemFzamt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4Mzk3MjcsImV4cCI6MjA3MzQxNTcyN30.HQAJ7TXg-5SAH3d7io-HTyrjF-p66ddAHjwPUY-tayI';            // ← replace
-const SUPABASE_BUCKET = 'gallery';                         // ← replace with your bucket name
-/* =================================== */
+const SUPABASE_BUCKET = 'gallery';                         // ← replace
 
 const STORAGE_KEY = 'memories_images_v1';
 
@@ -16,7 +11,7 @@ let supabase = null;
 let images = [];     // array of { url, id, path }
 let currentIndex = 0;
 
-/* --- DOM refs --- */
+/* DOM refs */
 const memoryImage = document.getElementById('memoryImage');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
@@ -31,11 +26,11 @@ const clearAllBtn = document.getElementById('clearAllBtn');
 const thumbnails = document.getElementById('thumbnails');
 const imageIndex = document.getElementById('imageIndex');
 
-/* ---------------- Initialize Supabase client ---------------- */
+/* Initialize Supabase client (if available) */
 (function initSupabase() {
   try {
     if (!window.supabase || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      console.warn('Supabase client missing or config not set. Realtime disabled.');
+      console.warn('Supabase client missing or config not set. Realtime disabled. window.supabase=', !!window.supabase);
       return;
     }
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -43,11 +38,11 @@ const imageIndex = document.getElementById('imageIndex');
     });
     console.log('Supabase client initialized.');
   } catch (e) {
-    console.warn('Supabase init failed:', e);
+    console.error('Supabase init failed:', e);
   }
 })();
 
-/* ---------------- Local storage helpers ---------------- */
+/* --- local storage helpers --- */
 function saveImagesToLocal() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
@@ -57,7 +52,6 @@ function saveImagesToLocal() {
     return false;
   }
 }
-
 function loadImagesFromLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -70,7 +64,7 @@ function loadImagesFromLocal() {
   }
 }
 
-/* ---------------- Image helpers (resize & blob) ---------------- */
+/* --- file helpers (resize/convert) --- */
 function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
     const fr = new FileReader();
@@ -79,7 +73,6 @@ function readFileAsDataURL(file) {
     fr.readAsDataURL(file);
   });
 }
-
 async function resizeImageFile(file, maxDim = 1200, quality = 0.78) {
   const dataUrl = await readFileAsDataURL(file);
   return new Promise((resolve) => {
@@ -103,11 +96,19 @@ async function resizeImageFile(file, maxDim = 1200, quality = 0.78) {
     img.src = dataUrl;
   });
 }
+function dataURLToBlob(dataurl) {
+  const arr = dataurl.split(',');
+  const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'image/jpeg';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new Blob([u8arr], { type: mime });
+}
 
-/* ---------------- Supabase upload + DB insert ---------------- */
+/* --- Supabase: upload to storage + insert row --- */
 async function uploadToSupabaseStorage(dataUrl, filename) {
   if (!supabase) throw new Error('Supabase not initialized');
-  // convert dataURL to blob
   const arr = dataUrl.split(',');
   const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'image/jpeg';
   const bstr = atob(arr[1]);
@@ -118,85 +119,76 @@ async function uploadToSupabaseStorage(dataUrl, filename) {
   const safeName = `${Date.now()}_${filename.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-\.]/g,'')}`;
   const path = safeName;
 
-  // upload to storage
   const { data: uploadData, error: uploadError } = await supabase.storage.from(SUPABASE_BUCKET).upload(path, blob, { cacheControl: '3600', upsert: false });
-  if (uploadError) throw uploadError;
+  if (uploadError) { console.error('Storage upload error', uploadError); throw uploadError; }
 
-  // get public URL
   const { data: publicData } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(path);
   const publicUrl = publicData && publicData.publicUrl ? publicData.publicUrl : null;
-  if (!publicUrl) throw new Error('Could not get public URL for uploaded file');
+  if (!publicUrl) throw new Error('Could not get public URL');
 
-  // insert DB row
   const { data: insertData, error: insertError } = await supabase.from('images').insert([{ url: publicUrl, path }]).select().limit(1);
-  if (insertError) {
-    console.warn('DB insert failed (upload exists):', insertError);
-    return { url: publicUrl, path, id: null };
-  }
-  const row = (insertData && insertData[0]) ? insertData[0] : null;
+  if (insertError) { console.warn('DB insert failed (upload exists):', insertError); return { url: publicUrl, path, id: null }; }
+  const row = insertData && insertData[0] ? insertData[0] : null;
   return { url: publicUrl, path, id: row ? row.id : null };
 }
 
-/* ---------------- Realtime subscription ---------------- */
+/* --- realtime subscription --- */
 let supabaseSubscription = null;
 function subscribeToImagesTable() {
   if (!supabase) return;
-  // unsubscribe previous if present
-  try { if (supabaseSubscription && typeof supabaseSubscription.unsubscribe === 'function') supabaseSubscription.unsubscribe(); } catch(e){}
-
-  supabaseSubscription = supabase
-    .channel('public:images')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'images' }, (payload) => {
-      const newRow = payload.new;
-      if (!newRow || !newRow.url) return;
-      if (images.some(i => i.url === newRow.url)) return; // avoid duplicates
-      images.push({ url: newRow.url, id: newRow.id || null, path: newRow.path || null });
-      saveImagesToLocal();
-      showImage(images.length - 1);
-    })
-    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'images' }, (payload) => {
-      const oldRow = payload.old;
-      if (!oldRow) return;
-      const idx = images.findIndex(i => i.id === oldRow.id || i.url === oldRow.url || i.path === oldRow.path);
-      if (idx !== -1) {
-        images.splice(idx, 1);
+  try {
+    if (supabaseSubscription && typeof supabaseSubscription.unsubscribe === 'function') supabaseSubscription.unsubscribe();
+    supabaseSubscription = supabase
+      .channel('public:images')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'images' }, (payload) => {
+        const newRow = payload.new;
+        if (!newRow || !newRow.url) return;
+        if (images.some(i => i.url === newRow.url)) return;
+        images.push({ url: newRow.url, id: newRow.id || null, path: newRow.path || null });
         saveImagesToLocal();
-        if (currentIndex >= images.length) currentIndex = images.length - 1;
-        showImage(currentIndex);
-      }
-    })
-    .subscribe()
-    .catch(err => console.warn('subscribe error', err));
+        showImage(images.length - 1);
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'images' }, (payload) => {
+        const oldRow = payload.old;
+        if (!oldRow) return;
+        const idx = images.findIndex(i => i.id === oldRow.id || i.url === oldRow.url || i.path === oldRow.path);
+        if (idx !== -1) {
+          images.splice(idx, 1);
+          saveImagesToLocal();
+          if (currentIndex >= images.length) currentIndex = images.length - 1;
+          showImage(currentIndex);
+        }
+      })
+      .subscribe()
+      .catch(err => console.warn('subscribe error', err));
+  } catch (e) {
+    console.error('subscribeToImagesTable exception', e);
+  }
 }
 
-/* ---------------- Load existing rows from DB ---------------- */
+/* --- load existing rows --- */
 async function loadExistingImagesFromDb() {
   if (!supabase) {
-    const local = loadImagesFromLocal();
-    images = local.slice();
+    images = loadImagesFromLocal().slice();
     if (images.length) showImage(0);
     return;
   }
-
   try {
     const { data, error } = await supabase.from('images').select('*').order('created_at', { ascending: true });
     if (error) throw error;
     if (Array.isArray(data)) {
-      for (const row of data) {
-        if (!images.some(i => i.url === row.url)) images.push({ url: row.url, id: row.id || null, path: row.path || null });
-      }
+      for (const row of data) if (!images.some(i => i.url === row.url)) images.push({ url: row.url, id: row.id || null, path: row.path || null });
       if (images.length) showImage(0);
       saveImagesToLocal();
     }
   } catch (e) {
-    console.warn('Could not load images from DB; falling back to local', e);
-    const local = loadImagesFromLocal();
-    images = local.slice();
+    console.warn('Could not load images from DB; using local', e);
+    images = loadImagesFromLocal().slice();
     if (images.length) showImage(0);
   }
 }
 
-/* ---------------- UI: thumbnails & show image ---------------- */
+/* --- UI updates --- */
 function updateThumbnails() {
   if (!thumbnails) return;
   thumbnails.innerHTML = '';
@@ -205,29 +197,20 @@ function updateThumbnails() {
     btn.className = 'thumb-btn';
     btn.title = `Image ${idx + 1}`;
     btn.dataset.index = idx;
-
     const img = document.createElement('img');
     img.src = obj.url;
     img.alt = `thumb-${idx}`;
     img.className = 'thumb-img';
-
     btn.appendChild(img);
     if (idx === currentIndex) btn.classList.add('active-thumb');
-
-    btn.addEventListener('click', () => {
-      currentIndex = idx;
-      showImage(currentIndex);
-    });
-
+    btn.addEventListener('click', () => { currentIndex = idx; showImage(currentIndex); });
     thumbnails.appendChild(btn);
   });
 }
-
 function showImage(index) {
   if (!memoryImage) return;
   if (images.length === 0) {
-    memoryImage.src = '';
-    memoryImage.alt = 'No images uploaded yet';
+    memoryImage.src = ''; memoryImage.alt = 'No images uploaded yet';
     if (imageIndex) imageIndex.textContent = 'No images';
     updateThumbnails();
     return;
@@ -239,29 +222,22 @@ function showImage(index) {
   updateThumbnails();
 }
 
-/* ---------------- Navigation handlers ---------------- */
-if (prevBtn) prevBtn.addEventListener('click', () => {
-  if (images.length > 0) { currentIndex = (currentIndex - 1 + images.length) % images.length; showImage(currentIndex); }
-});
-if (nextBtn) nextBtn.addEventListener('click', () => {
-  if (images.length > 0) { currentIndex = (currentIndex + 1) % images.length; showImage(currentIndex); }
-});
+/* --- navigation --- */
+if (prevBtn) prevBtn.addEventListener('click', () => { if (images.length) { currentIndex = (currentIndex - 1 + images.length) % images.length; showImage(currentIndex); }});
+if (nextBtn) nextBtn.addEventListener('click', () => { if (images.length) { currentIndex = (currentIndex + 1) % images.length; showImage(currentIndex); }});
 if (goToCakeBtn) goToCakeBtn.addEventListener('click', () => { window.location.href = 'cake.html'; });
 
-/* ---------------- Upload handler: compress -> storage -> DB row ---------------- */
+/* --- upload handler --- */
 if (uploadInput) {
   uploadInput.addEventListener('change', async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-
     for (const file of files) {
       if (!file.type.startsWith('image/')) continue;
       let compressedDataUrl;
       try { compressedDataUrl = await resizeImageFile(file, 1200, 0.78); } catch (err) { compressedDataUrl = await readFileAsDataURL(file); }
-
       try {
         const { url, path, id } = await uploadToSupabaseStorage(compressedDataUrl, file.name);
-        // add locally immediately in case realtime event hasn't arrived yet
         if (!images.some(i => i.url === url)) {
           images.push({ url, id: id || null, path });
           saveImagesToLocal();
@@ -269,91 +245,64 @@ if (uploadInput) {
         }
         console.log('Uploaded to Supabase:', url);
       } catch (err) {
-        console.error('Supabase upload failed, falling back to local data URL', err);
+        console.error('Supabase upload failed; using local:', err);
         images.push({ url: compressedDataUrl, id: null, path: null });
         saveImagesToLocal();
         showImage(images.length - 1);
       }
     }
-
     uploadInput.value = '';
   });
 }
 
-/* ---------------- Change (replace current) ---------------- */
+/* --- change (replace current) --- */
 if (changeBtn) {
   changeBtn.addEventListener('click', () => {
-    if (images.length === 0) { alert('No images to change. Please add an image first.'); return; }
+    if (!images.length) { alert('No images to change. Add one first.'); return; }
     if (changeInput) changeInput.click();
   });
 }
-
 if (changeInput) {
   changeInput.addEventListener('change', async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { alert('Please select an image file.'); changeInput.value = ''; return; }
-
     let compressedDataUrl;
     try { compressedDataUrl = await resizeImageFile(file, 1200, 0.78); } catch (err) { compressedDataUrl = await readFileAsDataURL(file); }
     try {
       const { url, path, id } = await uploadToSupabaseStorage(compressedDataUrl, file.name);
       const cur = images[currentIndex];
       if (cur && cur.id && supabase) {
-        try {
-          await supabase.from('images').update({ url, path }).eq('id', cur.id);
-        } catch (e) {
-          console.warn('Failed to update DB entry; replacing locally', e);
-          images[currentIndex] = { url, id: cur.id, path };
-          saveImagesToLocal();
-        }
-      } else {
-        images[currentIndex] = { url, id: id || null, path };
-        saveImagesToLocal();
-      }
+        try { await supabase.from('images').update({ url, path }).eq('id', cur.id); } catch (e) { console.warn('DB update failed; replacing locally', e); images[currentIndex] = { url, id: cur.id, path }; saveImagesToLocal(); }
+      } else { images[currentIndex] = { url, id: id || null, path }; saveImagesToLocal(); }
       showImage(currentIndex);
     } catch (err) {
-      console.warn('Change upload failed, using local dataURL', err);
-      images[currentIndex] = { url: compressedDataUrl, id: null, path: null };
-      saveImagesToLocal();
-      showImage(currentIndex);
+      console.warn('Change upload failed; using local', err);
+      images[currentIndex] = { url: compressedDataUrl, id: null, path: null }; saveImagesToLocal(); showImage(currentIndex);
     }
-
     changeInput.value = '';
   });
 }
 
-/* ---------------- Clear All (local only) ---------------- */
+/* --- clear all (local only) --- */
 if (clearAllBtn) clearAllBtn.addEventListener('click', async () => {
-  if (images.length === 0) { alert('Nothing to clear.'); return; }
-  const yes = confirm('Clear all saved images from this browser? This will not delete the uploaded files from storage.');
-  if (!yes) return;
-  images = [];
-  currentIndex = 0;
-  saveImagesToLocal();
-  showImage(currentIndex);
+  if (!images.length) { alert('Nothing to clear.'); return; }
+  if (!confirm('Clear all saved images from this browser? This will NOT delete storage files.')) return;
+  images = []; currentIndex = 0; saveImagesToLocal(); showImage(currentIndex);
 });
 
-/* ---------------- Init ---------------- */
+/* --- init --- */
 async function init() {
-  // show local images quickly
-  const local = loadImagesFromLocal();
-  if (Array.isArray(local) && local.length) images = local.slice();
-
+  images = loadImagesFromLocal().slice();
   if (supabase) {
     await loadExistingImagesFromDb();
     subscribeToImagesTable();
-  } else {
-    if (images.length) showImage(0);
+  } else if (images.length) {
+    showImage(0);
   }
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') prevBtn && prevBtn.click();
-    if (e.key === 'ArrowRight') nextBtn && nextBtn.click();
-  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') prevBtn && prevBtn.click(); if (e.key === 'ArrowRight') nextBtn && nextBtn.click(); });
+  console.log('App ready. images count:', images.length);
 }
-
 init();
-
 
 
